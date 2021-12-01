@@ -11,12 +11,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// add connection to redis cache
 var cache = redis.NewClient(&redis.Options{
 	Addr: "localhost:6379",
 })
 
 var ctx = context.Background()
 
+// verifyCache is a middleware to verify if the data is in cache
 func verifyCache(c *fiber.Ctx) error {
 	id := c.Params("id")
 	redisKey := fmt.Sprintf("%s:%s", "user", id)
@@ -26,7 +28,7 @@ func verifyCache(c *fiber.Ctx) error {
 	}
 
 	data := toJson(val)
-	return c.JSON(fiber.Map{"Cached": data})
+	return c.JSON(fiber.Map{"Data": data})
 }
 
 func main() {
@@ -51,14 +53,25 @@ func main() {
 			return err
 		}
 
+		// store in cache
 		redisKey := fmt.Sprintf("%s:%s", "user", id)
-		cacheErr := cache.Set(ctx, redisKey, body, 10*time.Second).Err()
+		cacheErr := cache.Set(ctx, redisKey, body, 60*time.Second).Err()
 		if cacheErr != nil {
 			return cacheErr
 		}
 
 		data := toJson(body)
 		return c.JSON(fiber.Map{"Data": data})
+	})
+
+	app.Put("/:id", func(c *fiber.Ctx) error {
+		id := c.Params("id")
+		redisKey := fmt.Sprintf("%s:%s", "user", id)
+
+		// delete cache
+		cache.Del(ctx, redisKey)
+
+		return c.SendString("updated user 👊")
 	})
 
 	app.Listen(":3000")
