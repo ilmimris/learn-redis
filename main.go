@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -18,7 +19,8 @@ var ctx = context.Background()
 
 func verifyCache(c *fiber.Ctx) error {
 	id := c.Params("id")
-	val, err := cache.Get(ctx, id).Bytes()
+	redisKey := fmt.Sprintf("%s:%s", "user", id)
+	val, err := cache.Get(ctx, redisKey).Bytes()
 	if err != nil {
 		return c.Next()
 	}
@@ -49,7 +51,8 @@ func main() {
 			return err
 		}
 
-		cacheErr := cache.Set(ctx, id, body, 10*time.Second).Err()
+		redisKey := fmt.Sprintf("%s:%s", "user", id)
+		cacheErr := cache.Set(ctx, redisKey, body, 10*time.Second).Err()
 		if cacheErr != nil {
 			return cacheErr
 		}
